@@ -1,6 +1,10 @@
+require 'rubygems'
+require 'bundler/setup'
+
+Bundler.require :development
+
 require 'test/unit'
 require 'digest/sha2'
-require 'rubygems'
 gem 'activerecord', ENV['ACTIVE_RECORD_VERSION'] if ENV['ACTIVE_RECORD_VERSION']
 require 'active_record'
 require 'datamapper'
