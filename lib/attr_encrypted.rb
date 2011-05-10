@@ -110,8 +110,16 @@ module AttrEncrypted
       :load_method      => 'load',
       :encryptor        => Encryptor,
       :encrypt_method   => 'encrypt',
-      :decrypt_method   => 'decrypt'
+      :decrypt_method   => 'decrypt',
+      :key_identifier   => '',
+      :keys             => {}
     }.merge!(attr_encrypted_options).merge!(attributes.last.is_a?(Hash) ? attributes.pop : {})
+
+    if options[:key].nil?
+      if options[:keys] && options[:keys][options[:key_identifier]]
+        options[:key] = options[:keys][options[:key_identifier]]
+      end
+    end
 
     options[:encode] = options[:default_encoding] if options[:encode] == true
 
@@ -175,8 +183,9 @@ module AttrEncrypted
   def decrypt(attribute, encrypted_value, options = {})
     options = encrypted_attributes[attribute.to_sym].merge(options)
     if options[:if] && !options[:unless] && !encrypted_value.nil? && !(encrypted_value.is_a?(String) && encrypted_value.empty?)
+      identifier, encrypted_value = encrypted_value.split("::", 2)
       encrypted_value = encrypted_value.unpack(options[:encode]).first if options[:encode]
-      value = options[:encryptor].send(options[:decrypt_method], options.merge!(:value => encrypted_value))
+      value = options[:encryptor].send(options[:decrypt_method], options.merge!(:value => encrypted_value, :key => options[:keys][identifier]))
       value = options[:marshaler].send(options[:load_method], value) if options[:marshal]
       value
     else
@@ -199,7 +208,7 @@ module AttrEncrypted
       value = options[:marshal] ? options[:marshaler].send(options[:dump_method], value) : value.to_s
       encrypted_value = options[:encryptor].send(options[:encrypt_method], options.merge!(:value => value))
       encrypted_value = [encrypted_value].pack(options[:encode]) if options[:encode]
-      encrypted_value
+      encrypted_value.insert(0, options[:key_identifier].to_s + "::")
     else
       value
     end

@@ -11,12 +11,12 @@ class SillyEncryptor
 end
 
 class User
-  self.attr_encrypted_options[:key] = Proc.new { |user| user.class.to_s } # default key
+  proc_key = Proc.new { |user| user.class.to_s }
 
   attr_encrypted :email, :without_encoding, :key => 'secret key'
-  attr_encrypted :password, :prefix => 'crypted_', :suffix => '_test'
+  attr_encrypted :password, :prefix => 'crypted_', :suffix => '_test', :key => proc_key
   attr_encrypted :ssn, :key => :salt, :attribute => 'ssn_encrypted'
-  attr_encrypted :credit_card, :encryptor => SillyEncryptor, :encrypt_method => :silly_encrypt, :decrypt_method => :silly_decrypt, :some_arg => 'test'
+  attr_encrypted :credit_card, :encryptor => SillyEncryptor, :encrypt_method => :silly_encrypt, :decrypt_method => :silly_decrypt, :some_arg => 'test', :key => proc_key
   attr_encrypted :with_encoding, :key => 'secret key', :encode => true
   attr_encrypted :with_custom_encoding, :key => 'secret key', :encode => 'm'
   attr_encrypted :with_marshaling, :key => 'secret key', :marshal => true
@@ -25,6 +25,10 @@ class User
   attr_encrypted :with_true_unless, :key => 'secret key', :unless => true
   attr_encrypted :with_false_unless, :key => 'secret key', :unless => false
   attr_encrypted :with_if_changed, :key => 'secret key', :if => :should_encrypt
+  attr_encrypted :with_key_identifier, :keys => {
+    '2011' => 'current secret key',
+    '2010' => 'old secret key'
+  }, :key_identifier => '2011'
 
   attr_encryptor :aliased, :key => 'secret_key'
 
@@ -287,4 +291,21 @@ class AttrEncryptedTest < Test::Unit::TestCase
     assert @user.email?
   end
 
+  def test_should_prefix_encryption_key_identifier_with_a_separator
+    string_encrypted_with_key_identifier = User.encrypt_with_key_identifier('blah')
+    assert_match /^2011::/, string_encrypted_with_key_identifier
+  end
+
+  def test_should_decrypt_with_appropriate_encryption_key
+    encrypted_2011 = '2011::' << Encryptor.encrypt(:value => 'testing', :key => 'current secret key')
+    assert_equal 'testing', User.decrypt_with_key_identifier(encrypted_2011)
+  end
+
+  def test_should_accept_many_keys_with_a_key_identifier
+    @user = User.new
+    assert_nil @user.with_key_identifier
+    @user.with_key_identifier = 'testing'
+    assert_not_nil @user.encrypted_with_key_identifier
+    assert_equal "2011::#{Encryptor.encrypt(:value => 'testing', :key => 'current secret key')}", @user.encrypted_with_key_identifier
+  end
 end
