@@ -309,4 +309,7 @@ end
 
 Object.extend AttrEncrypted
 
-Dir[File.join(File.dirname(__FILE__), 'attr_encrypted', 'adapters', '*.rb')].each { |adapter| require adapter }
+require 'attr_encrypted/adapters/active_record' if defined?(ActiveRecord::Base)
+require 'attr_encrypted/adapters/data_mapper'   if defined?(DataMapper)
+require 'attr_encrypted/adapters/sequel'        if defined?(Sequel)
+require 'attr_encrypted/adapters/mongo_mapper'  if defined?(MongoMapper)
