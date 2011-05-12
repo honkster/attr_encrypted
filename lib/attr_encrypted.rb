@@ -185,9 +185,14 @@ module AttrEncrypted
   def decrypt(attribute, encrypted_value, options = {})
     options = encrypted_attributes[attribute.to_sym].merge(options)
     if options[:if] && !options[:unless] && !encrypted_value.nil? && !(encrypted_value.is_a?(String) && encrypted_value.empty?)
-      identifier, encrypted_value = encrypted_value.split("::", 2)
+      if encrypted_value =~ /::/
+        identifier, encrypted_value = encrypted_value.split("::", 2)
+        key = options[:keys][identifier]
+      else
+        key = options[:key]
+      end
       encrypted_value = encrypted_value.unpack(options[:encode]).first if options[:encode]
-      value = options[:encryptor].send(options[:decrypt_method], options.merge!(:value => encrypted_value, :key => options[:keys][identifier]))
+      value = options[:encryptor].send(options[:decrypt_method], options.merge!(:value => encrypted_value, :key => key))
       value = options[:marshaler].send(options[:load_method], value) if options[:marshal]
       value
     else
@@ -207,10 +212,15 @@ module AttrEncrypted
   def encrypt(attribute, value, options = {})
     options = encrypted_attributes[attribute.to_sym].merge(options)
     if options[:if] && !options[:unless] && !value.nil? && !(value.is_a?(String) && value.empty?)
-      value = options[:marshal] ? options[:marshaler].send(options[:dump_method], value) : value.to_s
+      value   = options[:marshal] ? options[:marshaler].send(options[:dump_method], value) : value.to_s
       encrypted_value = options[:encryptor].send(options[:encrypt_method], options.merge!(:value => value))
       encrypted_value = [encrypted_value].pack(options[:encode]) if options[:encode]
-      encrypted_value.insert(0, options[:key_identifier].to_s + "::")
+
+      if options[:key_identifier].present?
+        encrypted_value.insert(0, options[:key_identifier] + '::')
+      end
+      
+      encrypted_value
     else
       value
     end

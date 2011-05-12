@@ -11,6 +11,8 @@ class SillyEncryptor
 end
 
 class User
+  self.attr_encrypted_options[:inheritance_check] = 'yup'
+
   proc_key = Proc.new { |user| user.class.to_s }
 
   attr_encrypted :email, :without_encoding, :key => 'secret key'
