@@ -113,7 +113,9 @@ module AttrEncrypted
       :decrypt_method   => 'decrypt',
       :key_identifier   => '',
       :keys             => {}
-    }.merge!(attr_encrypted_options).merge!(attributes.last.is_a?(Hash) ? attributes.pop : {})
+    }
+    options.merge!(attr_encrypted_options)
+    options.merge!(attributes.extract_options!)
 
     if options[:key].nil?
       if options[:keys] && options[:keys][options[:key_identifier]]
